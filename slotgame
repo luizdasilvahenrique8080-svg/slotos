@@ -1,0 +1,41 @@
+#!/bin/sh
+# Launcher do SlotOS: sobe o servidor de seat, depois o Cage (compositor que
+# mostra só 1 programa) com o Chromium em modo quiosque apontando pro jogo.
+
+GAME_URL="file:///opt/jogo/index.html"
+
+# usuário sem privilégios (o Chromium não gosta de rodar como root)
+adduser -D -s /bin/sh game 2>/dev/null
+for g in video input audio render seat; do
+	addgroup game "$g" 2>/dev/null
+done
+UID_GAME="$(id -u game)"
+
+mkdir -p "/run/user/$UID_GAME"
+chown game "/run/user/$UID_GAME"
+chmod 700 "/run/user/$UID_GAME"
+
+# som no máximo (se houver placa de som)
+amixer -q sset Master 100% unmute 2>/dev/null
+amixer -q sset Speaker 100% unmute 2>/dev/null
+
+# seatd: dá ao usuário acesso à tela/teclado/mouse
+pgrep seatd >/dev/null 2>&1 || seatd -g video >/dev/null 2>&1 &
+sleep 1
+
+exec su game -c "
+	export XDG_RUNTIME_DIR=/run/user/$UID_GAME
+	export LIBSEAT_BACKEND=seatd
+	export WLR_NO_HARDWARE_CURSORS=1
+	exec cage -d -- chromium \
+		--kiosk --start-fullscreen --disable-dev-tools \
+		--ozone-platform=wayland \
+		--user-data-dir=/tmp/chromium-slotos \
+		--no-first-run --no-default-browser-check \
+		--disable-infobars --noerrdialogs \
+		--disable-session-crashed-bubble \
+		--disable-pinch --overscroll-history-navigation=0 \
+		--autoplay-policy=no-user-gesture-required \
+		--disable-translate --disable-features=Translate \
+		$GAME_URL
+"
