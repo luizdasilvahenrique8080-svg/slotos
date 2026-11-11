@@ -65,6 +65,7 @@ chmod 755 "$tmp"/usr/local/bin/slotgame
 # serviços
 rc_add devfs sysinit
 rc_add dmesg sysinit
+rc_add modloop sysinit
 rc_add udev sysinit
 rc_add udev-trigger sysinit
 rc_add udev-settle sysinit
